@@ -7,7 +7,7 @@ import dbconfig
 current_milli_time = lambda: int(round(time.time() * 1000))
 mydb = None
 def main():
-
+    global mydb
     mydb = mysql.connector.connect(
         host=dbconfig.config['host'],
         user=dbconfig.config['user'],
@@ -38,6 +38,7 @@ def main():
         mycursor.execute(sql)
         result = mycursor.fetchall()
 
+        sensorik_err = 0
         for line in result:
             type = line[3]
             value = 0
@@ -55,15 +56,18 @@ def main():
             elif type == 'analog':
                 adc = MCP3008(channel=int(line[4]))
                 value = adc.value * 3.3
-                return calculate(line[5], value)
+                value = calculate(line[5], value)
             elif type == 'amount':
                 current_time = current_milli_time()
-                if not int(line['offset']) == 0:
-                    delta_time = current_time - int(line['offset'])
-                    line[5] = line[5].replace('[t]', delta_time / 60000)
-                    value = calculate(line[5])
+                calculate_str = line[5]
+                if not int(line[4]) == 0:
+                    delta_time = current_time - int(line[4])
+                    print(delta_time / 60000.0)
+                    calculate_str = calculate_str.replace('[t]', str(long(delta_time) / 60000.0))
+                    print(calculate_str)
+                    value = calculate(calculate_str)
 
-                correct_time_sql = 'UPDATE umkehrosmose.inputs SET offset="' + current_time + '" WHERE ID=' + line[0]
+                correct_time_sql = 'UPDATE ro.inputs SET offset="' + str(current_time) + '" WHERE ID=' + str(line[0])
                 correct_time_cur = mydb.cursor()
                 correct_time_cur.execute(correct_time_sql)
                 mydb.commit()
@@ -73,6 +77,7 @@ def main():
                 value = calculate(line[5])
             if value == 'Error':
                 print('Error', line[0])
+                sensorik_err = 1
                 continue
 
             eintrag_sql = 'UPDATE ro.values SET value=' + str(value) + ' WHERE ID=' + str(line[1]) + ' AND not manual;'
@@ -80,6 +85,11 @@ def main():
             eintrag_cursor.execute(eintrag_sql)
             mydb.commit()
             eintrag_cursor.close()
+
+        error_sql = 'UPDATE ro.values SET value=' + str(sensorik_err) + ' WHERE ID=3'
+        mycursor.execute(error_sql)
+        mydb.commit()
+        mycursor.close()
 
 def calculate(string, x=None):
     numbers = ''
@@ -98,6 +108,7 @@ def calculate(string, x=None):
       string = string.replace('x', str(x))
 
     sql = 'SELECT ID, value FROM ro.values WHERE ID=-1' + numbers
+    global mydb
     cursor = mydb.cursor()
     cursor.execute(sql)
     result = cursor.fetchall()

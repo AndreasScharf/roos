@@ -10,15 +10,14 @@ current_milli_time = lambda: int(round(time.time() * 1000))
 ip = '85.214.215.187'
 port = 5000
 mad = 'eddy_ro'
-values_to_cloud = [1, 2, 3, 4, 5, 16, 18, 19, 20, 21, 22, 23]
-units_to_cloud = ['', '', '', '', 'bar', 'bar', 'm³', 'm³', 'm³', 'm³', '%', '°C']
+values_to_cloud = [1, 2, 3, 4, 5, 15, 16, 18, 19, 20, 21, 22, 23]
+units_to_cloud = ['', '', '', '', 'l/min', 'bar', 'bar', 'm³', 'm³', 'm³', 'm³', '%', '°C']
 
 mydb = mysql.connector.connect(
-    host="192.168.14.105",
-#    host="127.0.0.1",
-    user="root",
+    host="127.0.0.1",
+    user="admin",
     password="12345",
-    database='umkehrosmose'
+    database='ro'
 )
 sio = socketio.Client()
 
@@ -65,7 +64,7 @@ def main():
 
     sql_condition = sql_condition[:-3]
     cursor = mydb.cursor()
-    sql = 'SELECT name, value FROM umkehrosmose.values ' + sql_condition + ' ORDER BY ID;'
+    sql = 'SELECT name, value FROM ro.values ' + sql_condition + ' ORDER BY ID;'
     print(sql)
     cursor.execute(sql)
     result = cursor.fetchall()

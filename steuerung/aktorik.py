@@ -19,9 +19,10 @@ def main():
 
     pumps = []
     ventils = []
+    siemens_siriuss = []
 
     setup_c = mydb.cursor()
-    sql = 'SELECT ID, type, Name, run_pin, ready_pin, feedback_pin FROM outputs'
+    sql = 'SELECT ID, type, Name, run_pin, ready_pin, feedback_pin, error_pin, reset_pin FROM outputs where active'
     setup_c.execute(sql)
     result = setup_c.fetchall()
 
@@ -40,16 +41,28 @@ def main():
                 pin=line[3]
             )
             ventils.append(ventil)
+        elif line[1] == 'siemens sirius':
+            siemens_sirius = output.siemens_sirius(
+                actor_id = line[0],
+                run_pin = line[3],
+                error_pin = line[6],
+                reset_pin = line[7]
+            )
+            siemens_siriuss.append(siemens_sirius)
+
     setup_c.close()
     print('All actors are setup')
 
-    sql = 'SELECT o.ID, type, value, ready, feedback_in, FK_values_disorder FROM outputs o INNER JOIN ro.values v ON o.FK_values=v.ID where active'
+    working_c = mydb.cursor()
+    sql = 'SELECT o.ID, type, value, ready, feedback_in, FK_values_disorder, FK_values_reset FROM outputs o INNER JOIN ro.values v ON o.FK_values=v.ID where active'
     while 1:
-        working_c = mydb.cursor()
         working_c.execute(sql)
         result = working_c.fetchall()
 
         for line in result:
+            #print('',line)
+            if len(line) < 2:
+                continue
             actor_id = line[0]
             value = line[2]
 
@@ -88,7 +101,27 @@ def main():
                     ventil.open()
                 else:
                     ventil.close()
+            elif line[1] == 'siemens sirius':
+                #Set runnig and error
+                s_sirius = [elem for elem in siemens_siriuss if elem.actor_id == actor_id][0]
+                s_sirius.run_pin
+                error = s_sirius.get_error()
+                print('pumpe', value and not error, s_sirius.run_pin)
+                s_sirius.set_run(value and not error)
+                set_c = mydb.cursor()
+                sql_setting_error = 'UPDATE ro.values SET value=' + str(error) + ' WHERE ID=' + str(line[5]) + ' AND not manual;'
+                set_c.execute(sql_setting_error)
+                mydb.commit()
 
-        working_c.close()
+                #set reset
+                sql_reset = 'SELECT value FROM ro.values WHERE ID=' + str(line[6])
+                print(sql_reset)
+                set_c.execute(sql_reset)
+                result = set_c.fetchall()
+                if len(result):
+                    if result[0][0]:
+                        s_sirius.reset()
+                set_c.close()
+
 if __name__ == '__main__':
     main()

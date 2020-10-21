@@ -20,6 +20,7 @@ def main():
     timers = []
     sql = 'SELECT ID, FK_values, FK_sensor, type, offset, equation FROM inputs WHERE active and type="calc" OR type="time"'
     while 1:
+
         mycursor = mydb.cursor()
         mycursor.execute(sql)
         result = mycursor.fetchall()
@@ -35,18 +36,53 @@ def main():
                 calculate_str = str(line[5]).replace('[t]', str(current_milli_time()))
 
                 cur_timer = [elem for elem in timers if elem.id == line[0]]
+                offset = 0
                 if not len(cur_timer):
                     cur_timer = timer.timer(line[0])
+                    if line[4]:
+                        cur_timer.reset = int(line[4])
+                    else:
+                        cur_timer.reset = 0
                     timers.append(cur_timer)
                 else:
                     cur_timer = cur_timer[0]
 
-                new_timer_value = calculate(calculate_str)#gibt mir neuen zeit wert ist 0 wenn aus
+                offset = line[4]
 
-                if (not new_timer_value) or (not cur_timer.timer):
-                  cur_timer.timer = new_timer_value
 
-                value = cur_timer.elapsed()
+                if offset:
+                    index = calculate_str.rindex('*')
+                    new_timer = calculate(calculate_str[0 : index])
+                    set_bit = calculate(calculate_str[(index + 1):])
+
+                    if set_bit and not cur_timer.timer:
+                        cur_timer.timer = new_timer
+                        cur_timer.reset = 2
+                    if (not set_bit) and cur_timer.reset == 0:
+                        cur_timer.timer = new_timer
+                        cur_timer.reset = 3
+                    if (not set_bit) and cur_timer.reset==3:
+                        cur_timer.reset = 0
+                        cur_timer.timer = 0
+
+                    value = (cur_timer.elapsed() and (not cur_timer.reset == 3)) or (not cur_timer.elapsed() and cur_timer.reset == 3)
+
+                    if value and cur_timer.reset == 2:
+                        cur_timer.reset = 0
+                    if (not value) and cur_timer.reset ==3:
+                        cur_timer.reset = 1
+                        cur_timer.timer = 0
+
+                    print('time=',calculate_str, ' value=', value, 'reset=', cur_timer.reset, 'timer', cur_timer.timer)
+                else:
+                    new_timer_value = calculate(calculate_str)#gibt mir neuen zeit wert ist 0 wenn aus
+
+                    if  (not new_timer_value) or (not cur_timer.timer):
+                      cur_timer.timer = new_timer_value
+
+                    value = cur_timer.elapsed()
+
+
 
             if value == 'Error':
                 print('Error', line[0])
@@ -55,12 +91,10 @@ def main():
             if line[0] in debuglist:
                 print(str(line[1]) + ', '  + str(value) + ' = ' + str(line[5]))
 
-
             eintrag_sql = 'UPDATE ro.values SET value=' + str(value) + ' WHERE ID=' + str(line[1]) + ' AND not manual;'
             eintrag_cursor = mydb.cursor()
             eintrag_cursor.execute(eintrag_sql)
             mydb.commit()
-            eintrag_cursor.close()
 
 def calculate(string, x=None):
     numbers = ''
@@ -79,6 +113,7 @@ def calculate(string, x=None):
       string = string.replace('x', str(x))
 
     sql = 'SELECT ID, value FROM ro.values WHERE ID=-1' + numbers
+
     cursor = mydb.cursor()
     cursor.execute(sql)
     result = cursor.fetchall()

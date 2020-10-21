@@ -44,3 +44,33 @@ class ventil(object):
       GPIO.output(self.pin, GPIO.HIGH)
     def open(self):
       GPIO.output(self.pin, GPIO.LOW)
+
+class siemens_sirius(object):
+    """docstring for siemens_sirius."""
+
+    def __init__(self, actor_id, run_pin, error_pin, reset_pin):
+        self.actor_id = actor_id
+        self.run_pin = run_pin
+        self.error_pin = error_pin
+        self.reset_pin = reset_pin
+
+        GPIO.setwarnings(False)
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(self.run_pin, GPIO.OUT)
+        GPIO.output(self.run_pin, GPIO.HIGH)
+
+        GPIO.setup(self.reset_pin, GPIO.OUT)
+        GPIO.output(self.reset_pin, GPIO.HIGH)
+
+        GPIO.setup(self.error_pin, GPIO.IN)
+
+    def set_run(self, running):
+        print(running)
+        if running:
+            GPIO.output(self.reset_pin, GPIO.LOW)
+        else:
+            GPIO.output(self.reset_pin, GPIO.HIGH)
+    def get_error(self):
+        return GPIO.input(self.error_pin)
+    def reset(self):
+        GPIO.output(self.reset_pin, GPIO.LOW)

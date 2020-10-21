@@ -5,6 +5,8 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const mysql = require('mysql');
 const axios = require('axios');
+const execSync = require('child_process').execSync;
+
 
 var corsOptions = {
   origin: '*',
@@ -14,7 +16,7 @@ var corsOptions = {
 const con = mysql.createConnection({
   host: "localhost",
   user: "admin",
-  password: "password",
+  password: "12345",
   database:"ro",
   multipleStatements: true
 });
@@ -25,8 +27,8 @@ con.connect((err) => {
 
 });
 app.use('/', express.static('client'));
-app.get('*', (req, res)=>{
-  //  res.sendFile(__dirname + '/client/index.html');
+app.get('/', (req, res)=>{
+    res.sendFile(__dirname + '/client/index.html');
 
 });
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -79,13 +81,25 @@ app.post('/getfixedvalue', (req, res)=>{
 app.post('/getvalue', (req, res)=>{
   const body = req.body;
   const id = body.id;
-
+  if(!id){
+    res.send({value: 0});
+    return
+  }
   let sql = `
     SELECT value FROM ro.values WHERE ID=` + con.escape(id) + `
   `
   con.query(sql, (err, result)=>{
     if (err)
       console.log(err);
+
+    if(!result){
+      console.log('Error', sql);
+      res.send({value: 0});
+
+    }
+
+    if(result.length==0)
+      console.log(sql);
     res.send({value: result[0].value});
   })
 });
@@ -125,7 +139,7 @@ app.post('/setsensors', (req, res)=>{
   });
 });
 app.post('/reset', (req, res)=>{
-  const to_zero = [3,4,44,47,50,37]
+  const to_zero = [2,3,4,44,47,50,37]
   const to_one = [97]
   let to_zero_sql = ''
   let to_one_sql = ''
@@ -158,6 +172,14 @@ app.post('/getcurrentstatus', (req, res)=>{
     const row = result[0]
     res.send({id: row.ID, status:row.comment});
   })
+})
+app.post('/reboot', (req, res)=>{
+  execSync('sudo reboot', (err, stdout, stderr) => {
+    if(err)
+      console.log('err', err);
+    if(stdout)
+      console.log(stdout);
+  });
 })
 
 http.listen(8000, ()=>{

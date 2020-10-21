@@ -1,10 +1,15 @@
 import serial
+import os
 
 class grundfossensor(object):
     """docstring for grundfossensor."""
 
     def __init__(self, barcode, sensor_id, type):
-        self.ports = ['/dev/ttyUSB0', '/dev/ttyUSB1']
+        self.ports = []
+        for item in os.listdir("/dev/"):
+            if 'USB' in item:
+                self.ports.append('/dev/' + item)
+
 
         self.barcode = barcode
         self.sensor_id = sensor_id
@@ -14,6 +19,8 @@ class grundfossensor(object):
         self.fullscale_tempratur = 0
         self.fullscale_pressure = 0
         self.fullscale_flow = 0
+
+        self.pressure_list = []
 
         self.init(barcode, sensor_id)
 
@@ -173,8 +180,11 @@ class grundfossensor(object):
          return 'Error'
 
       value = (data[-3] << 8) + data[-2]
+      if self.smooth_pressure:
+          return smoothing_pressure(self.calculate(self.fullscale_pressure, value))
 
       return self.calculate(self.fullscale_pressure, value)
+
     def get_flow(self):
         if self.type == 'RPS': #VFS kann keinen Druck
             return 'Error'
@@ -200,4 +210,14 @@ class grundfossensor(object):
 
         value = (data[-3] << 8) + data[-2]
 
-        return self.calculate(self.fullscale_pressure, value)
+        return self.calculate(self.fullscale_flow, value)
+    def smoothing_pressure(pressure):
+        if len(self.pressure_list) >= 5:
+            self.pressure_list.pop()
+
+        self.pressure_list.append(pressure)
+        sum_pressure = 0
+        for press in self.pressure_list:
+            sum_pressure = sum_pressure + press
+
+        return sum_pressure / long(len(self.pressure_list))
