@@ -22,6 +22,7 @@ def main():
     result = mycursor.fetchall()
 
     for line in result:
+        print('setting up sensor:', line[0])
         sensor = gfs.grundfossensor(
             barcode=line[1],
             sensor_id=line[0],
@@ -45,7 +46,7 @@ def main():
             if type == 'gfs':
                 sensor_id = line[2]
                 sensor = [elem for elem in sensors if elem.sensor_id == sensor_id][0]
-
+                print('get values from', line[2])
                 if line[4] == 'temp':
                     value = sensor.get_tempratur()
                 elif line[4] == 'press':
@@ -62,9 +63,7 @@ def main():
                 calculate_str = line[5]
                 if not int(line[4]) == 0:
                     delta_time = current_time - int(line[4])
-                    print(delta_time / 60000.0)
                     calculate_str = calculate_str.replace('[t]', str(long(delta_time) / 60000.0))
-                    print(calculate_str)
                     value = calculate(calculate_str)
 
                 correct_time_sql = 'UPDATE ro.inputs SET offset="' + str(current_time) + '" WHERE ID=' + str(line[0])
