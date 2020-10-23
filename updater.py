@@ -6,7 +6,7 @@ import sys
 import requests
 from colorama import init, Fore, Style
 
-path = '/home/pi/ro'
+path = '/home/pi/roos'
 
 def main():
 
@@ -52,7 +52,8 @@ def check_version():
     return x.text == 'new version available'
 def update():
     #git pull muss config auslassen bzw in gitignore schreiben
-    g = git.cmd.Git(path + '')
+    print(path)
+    g = git.cmd.Git(path + '/')
     g.stash()
     g.pull()
 

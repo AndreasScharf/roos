@@ -139,8 +139,8 @@ app.post('/setsensors', (req, res)=>{
   });
 });
 app.post('/reset', (req, res)=>{
-  const to_zero = [2,3,4,44,47,50,37]
-  const to_one = [97]
+  const to_zero = [2]
+  const to_one = []
   let to_zero_sql = ''
   let to_one_sql = ''
   for (const item of to_zero) {
