@@ -28,7 +28,7 @@ def main():
             sensor_id=line[0],
             type=line[2]
         )
-
+        sensor.smooth_pressure = False
         sensors.append(sensor)
     print('All Sensors setup')
     mycursor.close()
