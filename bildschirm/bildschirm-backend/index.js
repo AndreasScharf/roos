@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const http = require('http').Server(app);
+const io = require('socket.io')(http);
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const mysql = require('mysql');
@@ -181,6 +182,43 @@ app.post('/reboot', (req, res)=>{
       console.log(stdout);
   });
 })
+io.on('connection', function(socket){
+  let get_values = []
+  socket.emit('set_value_up', (data)=>{
+    if (data.id)
+      get_values.push({id:id});
+  });
+
+
+  setInterval(()=>{
+    if(!get_values.length){
+      return;
+    }
+    let condition = 'ID=-1 '
+    for (const value of get_values) {
+      condition += ' AND ID=' + con.escape(value.id) + ' '
+    }
+
+    let sql = 'SELECT ID, value FROM ro.values WHERE ' + condition
+    con.query(sql, (err, result)=>{
+      if(err)
+        console.log(err);
+
+      for (const line of result) {
+        socket.emit('recvvalue',{ID:line.ID, value:line.value});
+      }
+    });
+
+    sql = 'SELECT ID, value, comment FROM ro.values WHERE (ID BETWEEN 90 AND 99) AND value=1'
+    con.query(sql, (err, result)=>{
+      if(err)
+        console.log(err);
+      const row = result[0]
+      socket.emit('currentstatus', {id: row.ID, status:row.comment});
+    })
+  }, 500)
+});
+
 
 http.listen(8000, ()=>{
   console.log('listening on *:8000');
